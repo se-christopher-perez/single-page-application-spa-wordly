@@ -1,0 +1,10 @@
+@font-face {
+    font-family: "MyCustomFont";
+    src: url("fonts/project_font_2.ttf");
+}
+
+body {
+    font-family: "MyCustomFont";
+    background-color: black;
+    color: #03A062;
+}
