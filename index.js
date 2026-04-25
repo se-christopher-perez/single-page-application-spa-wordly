@@ -1,5 +1,14 @@
 
 let wordHistory = []
+const errorMessage = {
+
+    title: 'No Definitions Found',
+    message: "Sorry pal, we couldn't find definitions for the word you were looking for.",
+    resolution: 'You can try the search again at later time or head to the web instead.',
+    network: "I'm having trouble reaching the dictionary right now; please check your internet connection or try again in a few moments.",
+    emptyInput: "It looks like the search box is empty, please type a word so I can find a definition for you!"
+
+}
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -23,7 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         event.preventDefault()
 
-        searchWord()
+        wordSearch(input.value)
+
+        input.value = ""
 
     })
 
@@ -31,59 +42,120 @@ document.addEventListener("DOMContentLoaded", () => {
 
         event.preventDefault()
 
-        resetBoard()
+        resetButton()
 
     })
 
 })
 
-function displayWord(wordData) {
+function wordSearch(word) {
 
-    console.log(wordData)
+    const definitionContainer = document.querySelector("#definition-container")
 
-    const word = wordData[0]["word"]
-    const phonetics = wordData[0]["phonetics"]
-    const partofSpeech = wordData[0]["meanings"][0]["partOfSpeech"]
-    const definitions = wordData[0]["meanings"][0]["definitions"]
-    const synonymsArray = wordData[0]["meanings"][0]["synonyms"] || []
-    const sound = phonetics.find((element) => {
+    if (!word.trim()) {
 
-        return element.audio && element.audio !== ""
+        definitionContainer.innerHTML = ""
 
-    })
-    const audio = (typeof sound === "object") ? new Audio(sound["audio"]) : ""
-    const phoneticText = phonetics.find((element) => {
+        return handleEmptyError(errorMessage)
+    }
 
-        return element.text && element.text !== ""
+    definitionContainer.innerHTML = ""
 
-    })
+    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+        .then(response => response.json())
+        .then(json => {
 
-    const text = phoneticText ? phoneticText["text"] : "N/A"
+            const data = json
 
-    const wordContainer = document.querySelector("#word-container")
+            if (data["title"] !== "No Definitions Found") {
+
+                displayWord(data)
+                handleHistory(data)
+
+            } else {
+
+                handleError(data)
+
+            }
+
+        })
+        .catch((error) => {
+
+            handleConnectionError(errorMessage)
+
+        })
+
+}
+
+function displayWord(data) {
+
+    const definitionContainer = document.querySelector("#definition-container")
+
+    const word = data[0]["word"]
+
+    buildWord(definitionContainer, word)
 
     const phoneticAudioDiv = document.createElement("div")
     phoneticAudioDiv.id = "phonetic-audio-container"
 
-    const wordTitle = document.createElement("h2")
+    const phonetics = data[0]["phonetics"]
 
-    wordTitle.id = "word-card"
-    wordTitle.textContent = "Word:"
+    buildPhonetics(phoneticAudioDiv, phonetics)
+
+    buildAudio(definitionContainer, phoneticAudioDiv, phonetics)
+
+    const meanings = data[0]["meanings"]
+
+    buildDefinitions(definitionContainer, meanings)
+
+    buildSynonyms(definitionContainer, meanings)
+
+}
+
+function buildWord(container, word) {
 
     const h1 = document.createElement("h1")
 
     h1.textContent = word
     h1.id = "word"
 
+    container.append(h1)
+
+}
+
+function buildPhonetics(container, phonetics) {
+
+    const phoneticText = phonetics.find((element) => {
+
+        return element["text"] && element["text"] !== ""
+
+    })
+
+    const phonetic = phoneticText ? phoneticText["text"] : "n/a"
+
     const h2 = document.createElement("h2")
 
-    h2.textContent = text
-    h2.id = "phonetic"
+    h2.textContent = phonetic
+    h2.id = "phonetic-text"
 
-    const h3 = document.createElement("h3")
+    container.append(h2)
 
-    h3.textContent = partofSpeech
-    h3.id = "part-of-speech"
+}
+
+function buildAudio(mainContainer, container, phonetics) {
+
+    const audioFile = phonetics.find((element) => {
+
+        return element.audio && element.audio !== ""
+
+    })
+    const audio = (typeof audioFile === "object") ? new Audio(audioFile["audio"]) : ""
+
+    const p = document.createElement("p")
+
+    p.textContent = "Sorry, no audio available!"
+    p.id = "error-message"
+    p.hidden = true
 
     const img = document.createElement("img")
 
@@ -99,54 +171,118 @@ function displayWord(wordData) {
 
             audio.play()
 
+        } else {
+
+            alertNoAudio(p)
+
         }
 
     })
 
+    container.append(img)
+    mainContainer.append(container, p)
 
-    phoneticAudioDiv.append(h2, img)
-    wordContainer.append(wordTitle, h1, phoneticAudioDiv, h3)
+}
+
+function alertNoAudio(p) {
+
+    p.hidden = false
+
+    setTimeout(() => {
+
+        p.hidden = true
+
+    }, 3000)
+
+}
+
+function buildPartOfSpeech(container, partOfSpeech) {
+
+    const h3 = document.createElement("h3")
+
+    h3.textContent = partOfSpeech
+    h3.id = "part-of-speech"
+
+    container.append(h3)
+
+}
+
+function buildDefinitions(container, meanings) {
 
     let counter = 1
 
-    for (const key of definitions) {
+    for (const key of meanings) {
 
-        const definition = document.createElement("p")
-        const example = document.createElement("p")
+        const h2 = document.createElement("h2")
 
-        definition.textContent = `Definition ${counter}: ${key["definition"]}`
-        definition.id = "definition"
+        h2.textContent = key["partOfSpeech"]
+        h2.id = "phonetic-text"
 
-        counter += 1
+        container.append(h2)
 
-        wordContainer.append(definition)
+        for (const subKey of key["definitions"]) {
 
-        example.textContent = `Example: ${key["example"]}`
-        example.id = "example"
+            const definitionText = document.createElement("p")
+            const example = document.createElement("p")
 
-        if (key["example"]) {
+            definitionText.textContent = `Definition ${counter}: ${subKey["definition"]}`
+            definitionText.id = "definition-text"
 
-            wordContainer.append(example)
+            counter += 1
+
+            container.append(definitionText)
+
+            example.textContent = `Example: ${subKey["example"]}`
+            example.id = "example"
+
+            if (subKey["example"]) {
+
+                container.append(example)
+
+            }
 
         }
 
     }
 
-    const synonymList = document.createElement("p")
-    synonymList.textContent = synonymsArray.length > 0 ? `Synonyms: ${synonymsArray.join(", ")}`
-        : "Synonyms: N/A"
+}
 
-    wordContainer.append(synonymList)
+function buildSynonyms(container, meanings) {
+
+    const synonyms = []
+
+    for (const key of meanings) {
+
+        for (const subKey of key["synonyms"]) {
+
+            synonyms.push(subKey)
+
+        }
+
+    }
+
+    const p = document.createElement("p")
+
+    p.textContent = synonyms.length > 0 ? `Synonyms: ${synonyms.join(", ")}` : "Synonyms: N/A"
+
+    container.append(p)
 
 }
 
-function handleHistory(wordData) {
+function handleHistory(data) {
 
-    const word = wordData[0]["word"]
+    const word = data[0]["word"]
 
     const ul = document.querySelector("#history-list")
 
+    buildHistoryList(ul, word)
+
+}
+
+function buildHistoryList(container, word) {
+
     const li = document.createElement("li")
+
     li.id = "searched-word"
     li.textContent = `- ${word}`
 
@@ -154,7 +290,7 @@ function handleHistory(wordData) {
 
         event.preventDefault()
 
-        searchWordButton(word)
+        wordSearch(word)
 
     })
 
@@ -162,114 +298,23 @@ function handleHistory(wordData) {
 
         wordHistory.push(word)
 
-        ul.append(li)
+        container.append(li)
 
     }
 
 }
 
-function searchWord() {
+function resetButton() {
 
-    const errorMessage = {
-
-        title: 'No Definitions Found',
-        message: "Sorry pal, we couldn't find definitions for the word you were looking for.",
-        resolution: 'You can try the search again at later time or head to the web instead.'
-
-    }
-
-    const wordContainer = document.querySelector("#word-container")
     const input = document.querySelector("#input-box")
-    const word = input.value
 
-    if (!word.trim()) {
-        handleError(errorMessage)
-    }
-
-    wordContainer.innerHTML = ""
-
-    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-        .then(response => response.json())
-        .then(json => {
-
-            const wordData = json
-
-            if (wordData["title"] !== "No Definitions Found") {
-
-                displayWord(wordData)
-                handleHistory(wordData)
-
-            } else {
-
-                console.log(json)
-
-                handleError(json)
-
-            }
-
-            input.value = ""
-
-        })
-        .catch((error) => {
-
-            handleError(errorMessage)
-
-            input.value = ""
-
-        })
-
-}
-
-function searchWordButton(word) {
-
-    const wordContainer = document.querySelector("#word-container")
-
-    fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-        .then(response => response.json())
-        .then(json => {
-
-            const wordData = json
-
-            wordContainer.innerHTML = ""
-            displayWord(wordData)
-            handleHistory(wordData)
-
-        })
-        .catch((error) => {
-
-            console.log(error)
-
-        })
-
-}
-
-function handleError(error) {
-
-    const wordContainer = document.querySelector("#word-container")
-
-    const title = document.createElement("h1")
-    const message = document.createElement("h1")
-    const resolution = document.createElement("h1")
-
-    title.id = "error-message"
-    message.id = "error-message"
-    resolution.id = "error-message"
-
-    title.textContent = `Error: ${error["title"]}`
-    message.textContent = `Message: ${error["message"]}`
-    resolution.textContent = `Suggestion: ${error["resolution"]}`
-
-    wordContainer.append(title, message, resolution)
-
-}
-
-function resetBoard() {
+    input.value = ""
 
     const historyList = document.querySelector("#history-list")
 
     historyList.innerHTML = ""
 
-    const wordContainer = document.querySelector("#word-container")
+    const wordContainer = document.querySelector("#definition-container")
 
     wordContainer.innerHTML = ""
 
@@ -277,3 +322,50 @@ function resetBoard() {
 
 }
 
+function handleEmptyError(error) {
+
+    const definitionContainer = document.querySelector("#definition-container")
+
+    const emptyInput = document.createElement("p")
+
+    emptyInput.id = "error-message"
+
+    emptyInput.textContent = `Error: ${error["emptyInput"]}`
+
+    definitionContainer.append(emptyInput)
+
+}
+
+function handleError(error) {
+
+    const definitionContainer = document.querySelector("#definition-container")
+
+    const title = document.createElement("p")
+    const message = document.createElement("p")
+    const resolution = document.createElement("p")
+
+    title.id = "error-message"
+    message.id = "error-message"
+    resolution.id = "error-message"
+
+    title.textContent = `${error["title"]}`
+    message.textContent = `${error["message"]}`
+    resolution.textContent = `${error["resolution"]}`
+
+    definitionContainer.append(title, message, resolution)
+
+}
+
+function handleConnectionError(error) {
+
+    const definitionContainer = document.querySelector("#definition-container")
+
+    const networkConnectionIssue = document.createElement("p")
+
+    networkConnectionIssue.id = "error-message"
+
+    networkConnectionIssue.textContent = `Error: ${error["network"]}`
+
+    definitionContainer.append(networkConnectionIssue)
+
+}

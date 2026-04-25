@@ -21,9 +21,21 @@ body {
 
 }
 
-#search-history {
+#search-history-title {
 
     border-bottom: 5px solid black;
+
+}
+
+#input-form {
+
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    justify-content: center;
+    height: 50px;
+    margin: 20px auto;
 
 }
 
@@ -102,6 +114,7 @@ body {
 #history-container {
 
     width: 30%;
+    min-width: 154px;
     min-height: 125px;
     display: flex;
     flex-direction: column;
@@ -116,6 +129,8 @@ body {
     flex-wrap: wrap;
     gap: 20px;
     list-style: none;
+    justify-content: flex-start;
+    padding-left: 0;
 
 }
 
@@ -128,12 +143,10 @@ body {
 #word-container {
 
     width: 70%;
-    border: none;
-    border-radius: 5px;
 
 }
 
-#word-card {
+#word-title {
 
     border-bottom: 5px solid black;
 
@@ -143,7 +156,6 @@ body {
 
     font-size: 75px;
     font-weight: bold;
-    margin: 0px auto;
 
 }
 
@@ -152,7 +164,6 @@ body {
     display: flex;
     flex-direction: row;
     gap: 5px;
-    margin: 0px auto;
 
 }
 
@@ -165,11 +176,8 @@ body {
 #audio-button {
 
     cursor: pointer;
-    width: 35px;
-    height: 35px;
-
-    padding: 20px;
-
+    width: 55px;
+    height: 55px;
     object-fit: contain;
 
 }
@@ -191,3 +199,4 @@ body {
     color: red;
 
 }
+
